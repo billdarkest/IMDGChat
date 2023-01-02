@@ -1,44 +1,84 @@
+# -*- coding: utf-8 -*-
+
+#  Licensed under the Apache License, Version 2.0 (the "License"); you may
+#  not use this file except in compliance with the License. You may obtain
+#  a copy of the License at
+#
+#       https://www.apache.org/licenses/LICENSE-2.0
+#
+#  Unless required by applicable law or agreed to in writing, software
+#  distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+#  WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+#  License for the specific language governing permissions and limitations
+#  under the License.
+
+
+import os
+import sys
+from argparse import ArgumentParser
+
 from flask import Flask, request, abort
+from linebot import (
+    LineBotApi, WebhookParser
+)
+from linebot.exceptions import (
+    InvalidSignatureError
+)
+from linebot.models import (
+    MessageEvent, TextMessage, TextSendMessage,
+)
 
-import requests
+app = Flask(__name__)
 
-import re
+# get channel_secret and channel_access_token from your environment variable
+channel_secret = os.getenv('LINE_CHANNEL_SECRET', None)
+channel_access_token = os.getenv('LINE_CHANNEL_ACCESS_TOKEN', None)
+if channel_secret is None:
+    print('Specify LINE_CHANNEL_SECRET as environment variable.')
+    sys.exit(1)
+if channel_access_token is None:
+    print('Specify LINE_CHANNEL_ACCESS_TOKEN as environment variable.')
+    sys.exit(1)
 
-from bs4 import BeautifulSoup
+line_bot_api = LineBotApi(channel_access_token)
+parser = WebhookParser(channel_secret)
 
-import pymysql
 
-count = 0
-for i in range(50):
-    inputlist = input('請優雅的輸入UN:')
-    if inputlist.isdigit():
-        headers = {
-            "User-Agent": "Mozilla/5.0 (Linux; Android 6.0; Nexus 5 Build/MRA58N) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/72.0.3626.121 Mobile Safari/537.36"}
-        res = requests.get(
-            "https://docs.google.com/spreadsheets/d/e/2PACX-1vTfHqhAoeOGajlma3K7Ym1CngD2VI3ua99fwPc767QpExzAMyV81S6L1IZ6TwzSPLO2irkZt96QA-3h/pubhtml",
-            headers=headers)
-        DG = re.findall('</div></th><td class="s0" dir="ltr">(.*?)</td><td class=', res.content.decode('utf-8'), re.S)
-        SH = re.findall(
-            'td class="s0 softmerge" dir="ltr"><div class="softmerge-inner" style="width:27px;left:-1px">(.*?)</div></td><td class="s4" dir="ltr">',
-            res.content.decode('utf-8'), re.S)
-        EMS = re.findall('</div></td><td class="s4" dir="ltr">.*?</td><td class="s0" dir="ltr">(.*?)</td><td',
-                         res.content.decode('utf-8'), re.S)
-        SS = re.findall('QQQ(.*?)AAA', res.content.decode('utf-8'), re.S)
-        DG.remove('un_no')
-        SS.remove('stowage_and_segregation')
-        print(len(DG), len(SH), len(EMS), len(SS))
-        for D in range(0, 2853):
-            if inputlist == DG[D]:
-                print(DG[D])
-                print("這是" + SH[D] + ",ems為" + EMS[D])
-                print(SS[D])
-                count += 1
-        if count == 10:
-            print("你查了10次，感覺有點累了")
-        elif count == 50:
-            print("猛！你查了50次，休息一下，至少重開程式去喝個水")
-        else:
+@app.route("/callback", methods=['POST'])
+def callback():
+    signature = request.headers['X-Line-Signature']
+
+    # get request body as text
+    body = request.get_data(as_text=True)
+    app.logger.info("Request body: " + body)
+
+    # parse webhook body
+    try:
+        events = parser.parse(body, signature)
+    except InvalidSignatureError:
+        abort(400)
+
+    # if event is MessageEvent and message is TextMessage, then echo text
+    for event in events:
+        if not isinstance(event, MessageEvent):
+            continue
+        if not isinstance(event.message, TextMessage):
             continue
 
-    else:
-        print("你打錯了嗎")
+        line_bot_api.reply_message(
+            event.reply_token,
+            TextSendMessage(text=event.message.text)
+        )
+
+    return 'OK'
+
+
+if __name__ == "__main__":
+    arg_parser = ArgumentParser(
+        usage='Usage: python ' + __file__ + ' [--port <port>] [--help]'
+    )
+    arg_parser.add_argument('-p', '--port', type=int, default=8000, help='port')
+    arg_parser.add_argument('-d', '--debug', default=False, help='debug')
+    options = arg_parser.parse_args()
+
+    app.run(debug=options.debug, port=options.port)
