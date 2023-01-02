@@ -67,7 +67,7 @@ def callback():
             SS.remove('stowage_and_segregation')
             for D in range(0, 2853):
                 if event.message.text == DG[D]:
-                    line_bot_api.reply_message(event.reply_token, TextSendMessage(text="這是" + SH[D] + ",ems為" + EMS[D]))
+                    line_bot_api.reply_message(event.reply_token, TextSendMessage(text="這是" + SH[D] + ",ems為" + EMS[D]\n+SS[D]))
                     line_bot_api.reply_message(event.reply_token, TextSendMessage(text=SS[D]))
 
     return 'OK'
