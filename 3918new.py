@@ -47,7 +47,7 @@ def callback():
 
     # if event is MessageEvent and message is TextMessage, then echo text
     for event in events:
-        if len(event) == 4:
+        if len(event.message.text) == 4:
             line_bot_api.reply_message(event.reply_token, TextSendMessage(text='維修中'))
     return 'OK'
 
