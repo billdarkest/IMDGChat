@@ -4,7 +4,7 @@ services:
   env: python
   repo: https://github.com/billdarkest/IMDGChat
   buildCommand: pip install gunicorn -r requirements.txt
-  startCommand: gunicorn app:3918new
+  startCommand: gunicorn 3918new:app
   plan: free
   autoDeploy: false
   envVars:
