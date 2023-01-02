@@ -1,4 +1,5 @@
 
+import re
 import requests
 import os
 import sys
