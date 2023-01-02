@@ -8,7 +8,7 @@ services:
   plan: free
   autoDeploy: false
   envVars:
-  - key: U286180925610f3f6713eff147af35018N
+  - key: 2t0koK3HxQGpvyVNzm50AdtMYnkuYadxHQZlldTDFnMKacAJ81hE+R/c7iitBnKbPm1FnFw502atYfHYRPYzN2O5QO6mL82SnS904GJIFn8EJqyXH4hUWTmKklQ0IwYSpDNiRAeDWA0ofLfp4IY92wdB04t89/1O/w1cDnyilFU=
     sync: false
   - key: 19ace205f6e733e1c9381a4dfbc4650b
     sync: false
