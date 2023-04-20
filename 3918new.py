@@ -56,7 +56,7 @@ def callback():
             headers=headers)
             DG = re.findall('num(.*?)</div>', res.content.decode('utf-8'), re.S)
             SH = re.findall(
-            '<div class="softmerge-inner" style="width:197px;left:-1px">(.*?)</div>',
+            'PSN(.*?)</div>',
             res.content.decode('utf-8'), re.S)
             EMS = re.findall('</td><td class="s0">(.*?)BBB',
                          res.content.decode('utf-8'), re.S)
