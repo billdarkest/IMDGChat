@@ -56,9 +56,9 @@ def callback():
             headers=headers)
             DG = re.findall('</div></th><td class="s0" dir="ltr">(.*?)</td><td class=', res.content.decode('utf-8'), re.S)
             SH = re.findall(
-            '<div class="softmerge-inner" style="width:27px;left:-1px">(.*?)</div>',
+            '<div class="softmerge-inner" style=""width:197px;left:-1px">(.*?)</div>',
             res.content.decode('utf-8'), re.S)
-            EMS = re.findall('/td><td class="s0" dir="ltr">(.*?)</td><',
+            EMS = re.findall('</td><td class="s0">(.*?)</td><',
                          res.content.decode('utf-8'), re.S)
             SS = re.findall('AAA(.*?)<', res.content.decode('utf-8'), re.S)
             DG.remove('un_no')
