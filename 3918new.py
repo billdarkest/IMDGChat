@@ -64,7 +64,7 @@ def callback():
             DG.remove('un_id')
            #SH.remove('proper_shipping_name')
             EMS.remove('ems')
-            SS.remove('stowage_and_segregation')
+           #SS.remove('stowage_and_segregation')
             for D in range(0, 2855):
                 if event.message.text == DG[D]:
                     line_bot_api.reply_message(event.reply_token, TextSendMessage(text="這是" + SH[D] + ", Ems為 " + EMS[D] + '\n' + SS[D]))
