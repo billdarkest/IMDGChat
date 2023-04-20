@@ -60,7 +60,7 @@ def callback():
             res.content.decode('utf-8'), re.S)
             EMS = re.findall('/td><td class="s0" dir="ltr">(.*?)</td><',
                          res.content.decode('utf-8'), re.S)
-            SS = re.findall('QQQ(.*?)AAA<', res.content.decode('utf-8'), re.S)
+            SS = re.findall('AAA(.*?)<', res.content.decode('utf-8'), re.S)
             DG.remove('un_no')
             SH.remove('proper_shipping_name')
             EMS.remove('ems')
