@@ -61,7 +61,7 @@ def callback():
             EMS = re.findall('</td><td class="s0">(.*?)BBB',
                          res.content.decode('utf-8'), re.S)
             SS = re.findall('AAA(.*?)<', res.content.decode('utf-8'), re.S)
-            DG.remove('un_no')
+           #DG.remove('un_no')
            #SH.remove('proper_shipping_name')
            #EMS.remove('ems')
            #SS.remove('stowage_and_segregation')
