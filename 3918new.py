@@ -58,9 +58,9 @@ def callback():
             SH = re.findall(
             'PSN(.*?)</div>',
             res.content.decode('utf-8'), re.S)
-            EMS = re.findall('</td><td class="s0">(.*?)BBB',
+            EMS = re.findall('px;left:-1px">(.*?)BBB',
                          res.content.decode('utf-8'), re.S)
-            SS = re.findall('AAA(.*?)<', res.content.decode('utf-8'), re.S)
+            SS = re.findall('AAA(.*?)</div></t', res.content.decode('utf-8'), re.S)
            #DG.remove('un_no')
            #SH.remove('proper_shipping_name')
            #EMS.remove('ems')
