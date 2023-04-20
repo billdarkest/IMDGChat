@@ -67,7 +67,7 @@ def callback():
            #SS.remove('stowage_and_segregation')
             #print(DG)
             #print(SH)
-            print(EMS)
+            print(len(DG), len(SH), len(EMS), len(SS))
             for D in range(0, 2855):
                 if event.message.text == DG[D]:
                     line_bot_api.reply_message(event.reply_token, TextSendMessage(text="這是" + SH[D] + ", Ems為 " + EMS[D] + '\n' + SS[D]))
