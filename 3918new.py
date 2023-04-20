@@ -56,10 +56,10 @@ def callback():
             headers=headers)
             DG = re.findall('width:47px;left:-1px">num(.*?)</div></td', res.content.decode('utf-8'), re.S)
             SH = re.findall(
-            'left:-1px">(.*?)</div></td><td',
+            'left:-1px">PSN(.*?)</div></td><td',
             res.content.decode('utf-8'), re.S)
             EMS = re.findall('left:-1px">EN!(.*?)!BB</div></', res.content.decode('utf-8'), re.S)
-            SS = re.findall('left:-1px">AAA(.*?)</div></t', res.content.decode('utf-8'), re.S)
+            SS = re.findall(';left:-1px">(.*?)</div></td></tr><tr style="height:', res.content.decode('utf-8'), re.S)
            #DG.remove('un_no')
            #SH.remove('proper_shipping_name')
            #EMS.remove('ems')
