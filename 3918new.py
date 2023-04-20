@@ -54,9 +54,9 @@ def callback():
             res = requests.get(
             "https://docs.google.com/spreadsheets/d/e/2PACX-1vTfHqhAoeOGajlma3K7Ym1CngD2VI3ua99fwPc767QpExzAMyV81S6L1IZ6TwzSPLO2irkZt96QA-3h/pubhtml",
             headers=headers)
-            DG = re.findall('num(.*?)</div>', res.content.decode('utf-8'), re.S)
+            DG = re.findall('width:47px;left:-1px">num(.*?)</div></td', res.content.decode('utf-8'), re.S)
             SH = re.findall(
-            'PSN(.*?)</div>',
+            'left:-1px">(.*?)</div></td><td',
             res.content.decode('utf-8'), re.S)
             EMS = re.findall('>EU!(.*?)!BB<',
                          res.content.decode('utf-8'), re.S)
@@ -65,9 +65,9 @@ def callback():
            #SH.remove('proper_shipping_name')
            #EMS.remove('ems')
            #SS.remove('stowage_and_segregation')
-            #print(DG)
+            print(DG)
             #print(SH)
-            #print(EMS)
+            print(EMS)
             for D in range(0, 2855):
                 if event.message.text == DG[D]:
                     line_bot_api.reply_message(event.reply_token, TextSendMessage(text="這是" + SH[D] + ", Ems為 " + EMS[D] + '\n' + SS[D]))
