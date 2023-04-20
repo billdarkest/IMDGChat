@@ -58,16 +58,16 @@ def callback():
             SH = re.findall(
             'PSN(.*?)</div>',
             res.content.decode('utf-8'), re.S)
-            EMS = re.findall('iv class="softmerge-inner" style="width:47px;left:-1px">(.*?)BBB</div></td',
+            EMS = re.findall('>EU!(.*?)!BB<',
                          res.content.decode('utf-8'), re.S)
             SS = re.findall('AAA(.*?)</div></t', res.content.decode('utf-8'), re.S)
            #DG.remove('un_no')
            #SH.remove('proper_shipping_name')
            #EMS.remove('ems')
            #SS.remove('stowage_and_segregation')
-            print(DG)
-            print(SH)
-            print(EMS)
+            #print(DG)
+            #print(SH)
+            #print(EMS)
             for D in range(0, 2855):
                 if event.message.text == DG[D]:
                     line_bot_api.reply_message(event.reply_token, TextSendMessage(text="這是" + SH[D] + ", Ems為 " + EMS[D] + '\n' + SS[D]))
