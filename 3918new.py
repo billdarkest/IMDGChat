@@ -54,14 +54,14 @@ def callback():
             res = requests.get(
             "https://docs.google.com/spreadsheets/d/e/2PACX-1vTfHqhAoeOGajlma3K7Ym1CngD2VI3ua99fwPc767QpExzAMyV81S6L1IZ6TwzSPLO2irkZt96QA-3h/pubhtml",
             headers=headers)
-            DG = re.findall('</div></th><td class="s0" dir="ltr">(.*?)</td><td class=', res.content.decode('utf-8'), re.S)
+            DG = re.findall('</div></th><td class="s0">(.*?)</td><td class=', res.content.decode('utf-8'), re.S)
             SH = re.findall(
             '<div class="softmerge-inner" style=""width:197px;left:-1px">(.*?)</div>',
             res.content.decode('utf-8'), re.S)
             EMS = re.findall('</td><td class="s0">(.*?)</td><',
                          res.content.decode('utf-8'), re.S)
             SS = re.findall('AAA(.*?)<', res.content.decode('utf-8'), re.S)
-            DG.remove('un_no')
+            DG.remove('un_id')
             SH.remove('proper_shipping_name')
             EMS.remove('ems')
             SS.remove('stowage_and_segregation')
