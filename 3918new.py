@@ -67,6 +67,7 @@ def callback():
             #print(DG)
             #print(SH)
             print(len(DG), len(SH), len(EMS), len(SS))
+            print(EMS[-1], SS[-1])
             for D in range(0, 2855):
                 if event.message.text == DG[D]:
                     line_bot_api.reply_message(event.reply_token, TextSendMessage(text="這是" + SH[D] + ", Ems為 " + EMS[D] + '\n' + SS[D]))
