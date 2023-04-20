@@ -60,12 +60,12 @@ def callback():
             res.content.decode('utf-8'), re.S)
             EMS = re.findall('>EU!(.*?)!BB<',
                          res.content.decode('utf-8'), re.S)
-            SS = re.findall('AAA(.*?)</div></t', res.content.decode('utf-8'), re.S)
+            SS = re.findall('left:-1px">AAA(.*?)</div></t', res.content.decode('utf-8'), re.S)
            #DG.remove('un_no')
            #SH.remove('proper_shipping_name')
            #EMS.remove('ems')
            #SS.remove('stowage_and_segregation')
-            print(DG)
+            #print(DG)
             #print(SH)
             print(EMS)
             for D in range(0, 2855):
