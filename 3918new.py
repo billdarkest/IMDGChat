@@ -58,7 +58,7 @@ def callback():
             SH = re.findall(
             'PSN(.*?)</div>',
             res.content.decode('utf-8'), re.S)
-            EMS = re.findall('px;left:-1px">(.*?)BBB',
+            EMS = re.findall('iv class="softmerge-inner" style="width:47px;left:-1px">(.*?)BBB</div></td',
                          res.content.decode('utf-8'), re.S)
             SS = re.findall('AAA(.*?)</div></t', res.content.decode('utf-8'), re.S)
            #DG.remove('un_no')
