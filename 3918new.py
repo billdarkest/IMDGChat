@@ -62,7 +62,7 @@ def callback():
                          res.content.decode('utf-8'), re.S)
             SS = re.findall('AAA(.*?)<', res.content.decode('utf-8'), re.S)
             DG.remove('un_id')
-            SH.remove('proper_shipping_name')
+           #SH.remove('proper_shipping_name')
             EMS.remove('ems')
             SS.remove('stowage_and_segregation')
             for D in range(0, 2855):
