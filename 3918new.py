@@ -76,7 +76,7 @@ def callback():
             line_bot_api.reply_message(event.reply_token, TextSendMessage(text=targeturl))
             
         if len(event.message.text) == 5 and event.message.text[0] == '+':
-            targeturl = "https://ss.shipmentlink.com/tvs2/jsp/TVS2_ShowVesselVoyage.jsp?vessel_name=&vessel_code=" + event.message.text[1:]"
+            targeturl = "https://ss.shipmentlink.com/tvs2/jsp/TVS2_ShowVesselVoyage.jsp?vessel_name=&vessel_code=" + event.message.text[1:]""
             line_bot_api.reply_message(event.reply_token, TextSendMessage(text=targeturl))
 
     return 'OK'
