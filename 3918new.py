@@ -50,11 +50,7 @@ def get_ship_info(num):
     return None
 
 def handle_message(event):
-    if len(event.message.text) == 4:
-        ship_info = get_ship_info(event.message.text)
-        if ship_info:
-            line_bot_api.reply_message(event.reply_token, TextSendMessage(text=ship_info))
-    elif len(event.message.text) == 5 and event.message.text[0] == '*':
+    if len(event.message.text) == 5 and event.message.text[0] == '*':
         targeturl = "https://ss.shipmentlink.com/tvs2/jsp/TVS2_VesselSchedule.jsp?vslCode=" + event.message.text[1:] + "&vslNasme="
         line_bot_api.reply_message(event.reply_token, TextSendMessage(text=targeturl))
     elif len(event.message.text) == 5 and event.message.text[0] == '+':
