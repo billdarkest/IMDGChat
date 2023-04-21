@@ -31,6 +31,35 @@ if channel_access_token is None:
 line_bot_api = LineBotApi(channel_access_token)
 parser = WebhookParser(channel_secret)
 
+def get_ship_info(num):
+    headers = {
+        "User-Agent": "Mozilla/5.0 (Linux; Android 6.0; Nexus 5 Build/MRA58N) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/72.0.3626.121 Mobile Safari/537.36"
+    }
+    res = requests.get(
+        "https://docs.google.com/spreadsheets/d/e/2PACX-1vTfHqhAoeOGajlma3K7Ym1CngD2VI3ua99fwPc767QpExzAMyV81S6L1IZ6TwzSPLO2irkZt96QA-3h/pubhtml",
+        headers=headers
+    )
+    DG = re.findall('width:47px;left:-1px">num(.*?)</div></td', res.content.decode('utf-8'), re.S)
+    SH = re.findall('left:-1px">PSN(.*?)</div></td><td', res.content.decode('utf-8'), re.S)
+    EMS = re.findall('left:-1px">EN!(.*?)!BB</div></', res.content.decode('utf-8'), re.S)
+    SS = re.findall('px;left:-1px">AAA(.*?)</div></td></tr><tr style="height:', res.content.decode('utf-8'), re.S)
+
+    for D in range(0, 2856):
+        if num == DG[D]:
+            return "這是" + SH[D] + ", Ems為 " + EMS[D] + '\n' + SS[D]
+    return None
+
+def handle_message(event):
+    if len(event.message.text) == 4:
+        ship_info = get_ship_info(event.message.text)
+        if ship_info:
+            line_bot_api.reply_message(event.reply_token, TextSendMessage(text=ship_info))
+    elif len(event.message.text) == 5 and event.message.text[0] == '*':
+        targeturl = "https://ss.shipmentlink.com/tvs2/jsp/TVS2_VesselSchedule.jsp?vslCode=" + event.message.text[1:] + "&vslNasme="
+        line_bot_api.reply_message(event.reply_token, TextSendMessage(text=targeturl))
+    elif len(event.message.text) == 5 and event.message.text[0] == '+':
+        targeturl = "https://ss.shipmentlink.com/tvs2/jsp/TVS2_ShowVesselVoyage.jsp?vessel_name=&vessel_code=" + event.message.text[1:] + ""
+        line_bot_api.reply_message(event.reply_token, TextSendMessage(text=targeturl))
 
 @app.route("/callback", methods=['POST'])
 def callback():
@@ -45,39 +74,6 @@ def callback():
         events = parser.parse(body, signature)
     except InvalidSignatureError:
         abort(400)
-
-    # if event is MessageEvent and message is TextMessage, then echo text
-    for event in events:
-        if len(event.message.text) == 4:
-            headers = {
-            "User-Agent": "Mozilla/5.0 (Linux; Android 6.0; Nexus 5 Build/MRA58N) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/72.0.3626.121 Mobile Safari/537.36"}
-            res = requests.get(
-            "https://docs.google.com/spreadsheets/d/e/2PACX-1vTfHqhAoeOGajlma3K7Ym1CngD2VI3ua99fwPc767QpExzAMyV81S6L1IZ6TwzSPLO2irkZt96QA-3h/pubhtml",
-            headers=headers)
-            DG = re.findall('width:47px;left:-1px">num(.*?)</div></td', res.content.decode('utf-8'), re.S)
-            SH = re.findall(
-            'left:-1px">PSN(.*?)</div></td><td',
-            res.content.decode('utf-8'), re.S)
-            EMS = re.findall('left:-1px">EN!(.*?)!BB</div></', res.content.decode('utf-8'), re.S)
-            SS = re.findall('px;left:-1px">AAA(.*?)</div></td></tr><tr style="height:', res.content.decode('utf-8'), re.S)
-           #DG.remove('un_no')
-           #SH.remove('proper_shipping_name')
-           #EMS.remove('ems')
-           #SS.remove('stowage_and_segregation')
-            #print(DG)
-            #print(SH)
-            print(len(DG), len(SH), len(EMS), len(SS))
-            print(DG[2855])
-            for D in range(0, 2856):
-                if event.message.text == DG[D]:
-                    line_bot_api.reply_message(event.reply_token, TextSendMessage(text="這是" + SH[D] + ", Ems為 " + EMS[D] + '\n' + SS[D]))
-        if len(event.message.text) == 5 and event.message.text[0] == '*':
-            targeturl = "https://ss.shipmentlink.com/tvs2/jsp/TVS2_VesselSchedule.jsp?vslCode=" + event.message.text[1:] + "&vslNasme="
-            line_bot_api.reply_message(event.reply_token, TextSendMessage(text=targeturl))
-            
-        if len(event.message.text) == 5 and event.message.text[0] == '+':
-            targeturl = "https://ss.shipmentlink.com/tvs2/jsp/TVS2_ShowVesselVoyage.jsp?vessel_name=&vessel_code=" + event.message.text[1:] + ""
-            line_bot_api.reply_message(event.reply_token, TextSendMessage(text=targeturl))
 
     return 'OK'
 
