@@ -71,6 +71,10 @@ def callback():
     except InvalidSignatureError:
         abort(400)
 
+    for event in events:
+        if isinstance(event, MessageEvent) and isinstance(event.message, TextMessage):
+            handle_message(event)
+
     return 'OK'
 
 
