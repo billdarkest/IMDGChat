@@ -35,22 +35,17 @@ parser = WebhookParser(channel_secret)
 
 def handle_message(event):
     if len(event.message.text) == 4 :
-        headers = {
-        "User-Agent": "Mozilla/5.0 (Linux; Android 6.0; Nexus 5 Build/MRA58N) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/72.0.3626.121 Mobile Safari/537.36"
-    }
-    res = requests.get(
-        "https://docs.google.com/spreadsheets/d/e/2PACX-1vTfHqhAoeOGajlma3K7Ym1CngD2VI3ua99fwPc767QpExzAMyV81S6L1IZ6TwzSPLO2irkZt96QA-3h/pubhtml",
-        headers=headers
-    )
-    DG = re.findall('width:47px;left:-1px">num(.*?)</div></td', res.content.decode('utf-8'), re.S)
-    SH = re.findall('left:-1px">PSN(.*?)</div></td><td', res.content.decode('utf-8'), re.S)
-    EMS = re.findall('left:-1px">EN!(.*?)!BB</div></', res.content.decode('utf-8'), re.S)
-    SS = re.findall('px;left:-1px">AAA(.*?)</div></td></tr><tr style="height:', res.content.decode('utf-8'), re.S)
+        headers = {"User-Agent": "Mozilla/5.0 (Linux; Android 6.0; Nexus 5 Build/MRA58N) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/72.0.3626.121 Mobile Safari/537.36"}
+        res = requests.get("https://docs.google.com/spreadsheets/d/e/2PACX-1vTfHqhAoeOGajlma3K7Ym1CngD2VI3ua99fwPc767QpExzAMyV81S6L1IZ6TwzSPLO2irkZt96QA-3h/pubhtml", headers=headers)
+        DG = re.findall('width:47px;left:-1px">num(.*?)</div></td', res.content.decode('utf-8'), re.S)
+        SH = re.findall('left:-1px">PSN(.*?)</div></td><td', res.content.decode('utf-8'), re.S)
+        EMS = re.findall('left:-1px">EN!(.*?)!BB</div></', res.content.decode('utf-8'), re.S)
+        SS = re.findall('px;left:-1px">AAA(.*?)</div></td></tr><tr style="height:', res.content.decode('utf-8'), re.S)
 
-    for D in range(0, 2856):
-        if num == DG[D]:
-            targeturl ="這是" + SH[D] + ", Ems為 " + EMS[D] + '\n' + SS[D]
-            line_bot_api.reply_message(event.reply_token, TextSendMessage(text=targeturl))
+        for D in range(0, 2856):
+            if num == DG[D]:
+                targeturl ="這是" + SH[D] + ", Ems為 " + EMS[D] + '\n' + SS[D]
+                line_bot_api.reply_message(event.reply_token, TextSendMessage(text=targeturl))
             
     if len(event.message.text) == 5 and event.message.text[0] == '*':
         targeturl = "https://ss.shipmentlink.com/tvs2/jsp/TVS2_VesselSchedule.jsp?vslCode=" + event.message.text[1:] + "&vslNasme="
