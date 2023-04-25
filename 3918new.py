@@ -43,7 +43,7 @@ def handle_message(event):
         SS = re.findall('px;left:-1px">AAA(.*?)</div></td></tr><tr style="height:', res.content.decode('utf-8'), re.S)
 
         for D in range(0, 2856):
-            if num == DG[D]:
+            if event.message.text == DG[D]:
                 targeturl ="這是" + SH[D] + ", Ems為 " + EMS[D] + '\n' + SS[D]
                 line_bot_api.reply_message(event.reply_token, TextSendMessage(text=targeturl))
             
