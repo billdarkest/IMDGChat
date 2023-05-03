@@ -54,7 +54,7 @@ def handle_message(event):
         targeturl = "https://ss.shipmentlink.com/tvs2/jsp/TVS2_ShowVesselVoyage.jsp?vessel_name=&vessel_code=" + event.message.text[1:] + ""
         line_bot_api.reply_message(event.reply_token, TextSendMessage(text=targeturl))
 
-@app.route("/callback", methods=['POST'])
+@app.route("/callback", methods=['POST', 'GET'])
 def callback():
     signature = request.headers['X-Line-Signature']
 
