@@ -54,7 +54,7 @@ def handle_message(event):
         targeturl = "https://ss.shipmentlink.com/tvs2/jsp/TVS2_ShowVesselVoyage.jsp?vessel_name=&vessel_code=" + event.message.text[1:] + ""
         line_bot_api.reply_message(event.reply_token, TextSendMessage(text=targeturl))
 
-@app.route("/callback", methods=['POST', 'GET'])
+@app.route("/callback", methods=['POST'])
 def callback():
     signature = request.headers['X-Line-Signature']
 
@@ -74,6 +74,15 @@ def callback():
 
     return 'OK'
 
+@app.route('/keepalive', methods=['GET'])
+def keep_alive():
+    if 'HTTP_X_LINE_SIGNATURE' not in request.environ:
+        print("喚醒")
+        # 如果沒有 X-Line-Signature，就返回 200 OK
+        return 'OK'
+
+    # 如果有 X-Line-Signature，就返回 400 Bad Request
+    abort(400)
 
 if __name__ == "__main__":
     arg_parser = ArgumentParser(
