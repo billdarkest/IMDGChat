@@ -71,6 +71,7 @@ def callback():
     for event in events:
         if isinstance(event, MessageEvent) and isinstance(event.message, TextMessage):
             handle_message(event)
+            print("小幫手回覆成功")
 
     return 'OK'
 
