@@ -2,3 +2,8 @@ line-bot-sdk
 flask
 requests
 gunicorn
+Flask
+line-bot-sdk
+pandas
+requests
+
