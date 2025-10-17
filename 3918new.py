@@ -35,3 +35,36 @@ def handle_message(event):
     elif len(event.message.text) == 5 and event.message.text[0] == '+':
         targeturl = "https://ss.shipmentlink.com/tvs2/jsp/TVS2_ShowVesselVoyage.jsp?vessel_name=&vessel_code=" + event.message.text[1:]
         line_bot_api.reply_message(event.reply_token, TextSendMessage(text=targeturl))
+
+@app.route("/callback", methods=['POST'])
+def callback():
+    signature = request.headers['X-Line-Signature']
+
+    # get request body as text
+    body = request.get_data(as_text=True)
+    app.logger.info("Request body: " + body)
+
+    # parse webhook body
+    try:
+        events = parser.parse(body, signature)
+    except InvalidSignatureError:
+        abort(400)
+
+    for event in events:
+        if isinstance(event, MessageEvent) and isinstance(event.message, TextMessage):
+            handle_message(event)
+            print("小幫手回覆成功")
+
+    return 'OK'
+
+
+@app.route('/keepalive', methods=['GET'])
+def keep_alive():
+    print("喚醒")
+    return 'OK'
+
+
+if __name__ == "__main__":
+    # 🔹 Render 會提供 PORT 環境變數
+    port = int(os.environ.get("PORT", 8000))
+    app.run(host="0.0.0.0", port=port)
