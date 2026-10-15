@@ -116,7 +116,7 @@ def handle_message(event):
     # 🧭 處理 5 碼，且開頭為 '+' 的查詢 (長榮航次查詢)
     elif len(text) == 5 and text[0] == '+':
         targeturl = f"https://ss.shipmentlink.com/tvs2/jsp/TVS2_ShowVesselVoyage.jsp?vessel_name=&vessel_code={text[1:]}"
-        reply_text = f"{targeturl}\n\n(回覆來自：{current_filename})"
+        reply_text = f"{targeturl}\n\n(檔案版本：{current_filename})"
         line_bot_api.reply_message(event.reply_token, TextSendMessage(text=reply_text))
 
 
