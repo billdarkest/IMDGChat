@@ -12,6 +12,9 @@ from linebot.models import MessageEvent, TextMessage, TextSendMessage
 # 建立 Flask 網頁伺服器應用程式
 app = Flask(__name__)
 
+# 自動取得目前執行的 Python 檔案名稱 (例如：newDG.py)
+current_filename = os.path.basename(__file__)
+
 # === LINE 環境變數設定 ===
 # 從 Render 的 Environment Variables 讀取 LINE Bot 的金鑰
 channel_secret = os.getenv('LINE_CHANNEL_SECRET', None)
@@ -97,6 +100,9 @@ def handle_message(event):
             # 過程中有任何當機或錯誤，把錯誤訊息印給使用者看
             reply_text = f"⚠️ 發生錯誤：{e}"
 
+        # 於回覆文字最下方加上目前的檔案名稱
+        reply_text += f"\n\n(回覆來自：{current_filename})"
+
         # 呼叫 LINE API 將組合好的文字回傳給使用者
         line_bot_api.reply_message(event.reply_token, TextSendMessage(text=reply_text))
 
@@ -104,12 +110,14 @@ def handle_message(event):
     elif len(text) == 5 and text[0] == '*':
         # text[1:] 代表取第2個字元到最後 (例如輸入 *0362，就會取 0362 放進網址)
         targeturl = f"https://ss.shipmentlink.com/tvs2/jsp/TVS2_VesselSchedule.jsp?vslCode={text[1:]}&vslName="
-        line_bot_api.reply_message(event.reply_token, TextSendMessage(text=targeturl))
+        reply_text = f"{targeturl}\n\n(回覆來自：{current_filename})"
+        line_bot_api.reply_message(event.reply_token, TextSendMessage(text=reply_text))
         
     # 🧭 處理 5 碼，且開頭為 '+' 的查詢 (長榮航次查詢)
     elif len(text) == 5 and text[0] == '+':
         targeturl = f"https://ss.shipmentlink.com/tvs2/jsp/TVS2_ShowVesselVoyage.jsp?vessel_name=&vessel_code={text[1:]}"
-        line_bot_api.reply_message(event.reply_token, TextSendMessage(text=targeturl))
+        reply_text = f"{targeturl}\n\n(回覆來自：{current_filename})"
+        line_bot_api.reply_message(event.reply_token, TextSendMessage(text=reply_text))
 
 
 # === LINE Webhook 接收端點 ===
