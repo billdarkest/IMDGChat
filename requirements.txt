@@ -6,4 +6,5 @@ Flask
 line-bot-sdk
 pandas
 requests
-
+beautifulsoup4
+requests
