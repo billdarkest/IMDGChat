@@ -2,6 +2,8 @@ import os
 import sys
 import io
 import requests
+import urllib.parse
+import xml.etree.ElementTree as ET
 import pandas as pd
 from bs4 import BeautifulSoup
 from argparse import ArgumentParser
@@ -17,11 +19,9 @@ app = Flask(__name__)
 current_filename = os.path.basename(__file__)
 
 # === LINE 環境變數設定 ===
-# 從 Render 的 Environment Variables 讀取 LINE Bot 的金鑰
 channel_secret = os.getenv('LINE_CHANNEL_SECRET', None)
 channel_access_token = os.getenv('LINE_CHANNEL_ACCESS_TOKEN', None)
 
-# 如果沒有抓到金鑰，程式會直接停止
 if channel_secret is None:
     print('❌ 未設定 LINE_CHANNEL_SECRET')
     sys.exit(1)
@@ -29,47 +29,58 @@ if channel_access_token is None:
     print('❌ 未設定 LINE_CHANNEL_ACCESS_TOKEN')
     sys.exit(1)
 
-# 初始化 LINE Bot API 與 Webhook 解析器
 line_bot_api = LineBotApi(channel_access_token)
 parser = WebhookParser(channel_secret)
 
-# === CSV 環境變數 ===
-# 從 Render 讀取你存放危險品資料的 CSV 網址
+# === CSV 全域快取 (啟動時只讀取一次) ===
 CSV_URL = os.getenv("CSV_URL", None)
-if CSV_URL is None:
-    print("❌ 未設定 CSV_URL，請在 Render Environment 新增")
-else:
-    print(f"📄 Loaded CSV_URL: {CSV_URL}")
+DG_DF = None
+UN_COL = None
+
+def load_csv_to_memory():
+    global DG_DF, UN_COL
+    if CSV_URL is None:
+        print("❌ 未設定 CSV_URL，請在 Render Environment 新增")
+        return
+        
+    try:
+        print("📥 正在從 Google 試算表載入危險品資料...")
+        response = requests.get(CSV_URL)
+        response.encoding = 'utf-8'
+        df = pd.read_csv(io.StringIO(response.text), sep=',', quotechar='"', engine='python', skip_blank_lines=True)
+        df.columns = [c.strip().lower() for c in df.columns]
+
+        if 'un_no' in df.columns:
+            UN_COL = 'un_no'
+        elif 'num' in df.columns:
+            UN_COL = 'num'
+        else:
+            raise KeyError("未找到 'un_no' 或 'num' 欄位")
+
+        df[UN_COL] = df[UN_COL].astype(str).str.replace("num", "", case=False).str.strip()
+        DG_DF = df
+        print(f"✅ CSV 載入成功！共 {len(DG_DF)} 筆資料，之後查詢將瞬間回覆。")
+    except Exception as e:
+        print(f"⚠️ CSV 載入失敗: {e}")
+
+# 在程式啟動時立刻執行載入
+load_csv_to_memory()
 
 # === 處理訊息的自訂函式 ===
 def handle_message(event):
-    # 將使用者傳來的文字去除前後多餘的空白
     text = event.message.text.strip()
 
-    # 🧩 處理 4 碼 UN 編號查詢
+    # 🔄 隱藏指令：手動更新 CSV (不用重開機)
+    if text.upper() == "!RELOAD":
+        load_csv_to_memory()
+        reply_text = f"✅ 危險品資料庫已重新下載並更新至記憶體！\n\n(回覆來自：{current_filename})"
+        line_bot_api.reply_message(event.reply_token, TextSendMessage(text=reply_text))
+        return
+
+    # 🧩 處理 4 碼 UN 編號查詢 (直接讀取記憶體，速度極快)
     if len(text) == 4 and text.isdigit():
-        try:
-            # 即時發送網路請求，下載最新的 CSV 內容
-            response = requests.get(CSV_URL)
-            response.encoding = 'utf-8'
-            
-            # 使用 pandas 把下載下來的文字轉換成表格
-            df = pd.read_csv(io.StringIO(response.text), sep=',', quotechar='"', engine='python', skip_blank_lines=True)
-            df.columns = [c.strip().lower() for c in df.columns]
-
-            # 嘗試偵測 UN 編號欄位
-            if 'un_no' in df.columns:
-                un_col = 'un_no'
-            elif 'num' in df.columns:
-                un_col = 'num'
-            else:
-                raise KeyError("CSV 未找到 'un_no' 或 'num' 欄位")
-
-            # 清理 UN 欄位並比對
-            df[un_col] = df[un_col].astype(str).str.replace("num", "").str.strip()
-            match_row = df[df[un_col] == text]
-
-            # 如果有找到資料
+        if DG_DF is not None and UN_COL is not None:
+            match_row = DG_DF[DG_DF[UN_COL] == text]
             if not match_row.empty:
                 row = match_row.iloc[0]
                 psn = str(row.get('proper_shipping_name', '')).replace("PSN", "").strip()
@@ -84,15 +95,13 @@ def handle_message(event):
                 )
             else:
                 reply_text = f"❓ 查無此 UN 編號：{text}"
+        else:
+            reply_text = "⚠️ 危險品資料尚未準備好，請稍後再試。"
 
-        except Exception as e:
-            reply_text = f"⚠️ 發生錯誤：{e}"
-
-        # 於回覆文字最下方加上目前的檔案名稱
         reply_text += f"\n\n(回覆來自：{current_filename})"
         line_bot_api.reply_message(event.reply_token, TextSendMessage(text=reply_text))
 
-    # 🆕 處理 CINS 最新公告爬蟲 (輸入「CINS」觸發)
+    # 🆕 處理 CINS 最新公告爬蟲
     elif text.upper() == "CINS":
         try:
             url = "https://www.cinsnet.com/newsy/"
@@ -102,23 +111,16 @@ def handle_message(event):
             soup = BeautifulSoup(res.text, 'html.parser')
             news_links = []
             
-            # 【關鍵改良：結構過濾法】
-            # 直接把網頁的 頁首(header)、導覽列(nav)、頁尾(footer) 區塊從解析樹中砍掉 (decompose)
-            # 這樣一來，剩下的內容絕對不會有「導覽列按鈕」，不管新聞標題寫什麼都不會被誤殺
+            # 移除導覽列與頁尾，避免抓到無關按鈕
             for element in soup.find_all(['nav', 'header', 'footer']):
                 element.decompose()
             
-            # 接著在剩下的純淨內容中尋找連結
             for a in soup.find_all('a', href=True):
                 href = a['href']
                 title = a.text.strip()
-                
-                # 只要有標題，長度合理，且是該網站的連結就收錄
                 if title and len(title) > 10 and "cinsnet.com" in href:
                     if (title, href) not in news_links:
                         news_links.append((title, href))
-                
-                # 最多只取前 5 筆
                 if len(news_links) >= 5:
                     break
             
@@ -127,21 +129,48 @@ def handle_message(event):
                 for i, (title, link) in enumerate(news_links, 1):
                     reply_text += f"🔹 {title}\n{link}\n\n"
             else:
-                reply_text = f"前往 CINS 最新動態查看：\n{url}"
-                
+                reply_text = f"前往 CINS 查看：\n{url}"
         except Exception as e:
-            reply_text = f"⚠️ 無法即時取得資訊: {e}\n請前往: {url}"
+            reply_text = f"⚠️ 無法取得資訊: {e}\n請前往: {url}"
             
         reply_text += f"(回覆來自：{current_filename})"
         line_bot_api.reply_message(event.reply_token, TextSendMessage(text=reply_text))
 
-    # 🧭 處理 5 碼，且開頭為 '*' 的查詢 (長榮船期表查詢)
+    # 🔥 處理火災新聞搜尋
+    elif text == "火災":
+        try:
+            # 透過 Google News RSS 搜尋中英文的貨櫃船火災新聞
+            query = urllib.parse.quote("貨櫃船 火災 OR container ship fire")
+            url = f"https://news.google.com/rss/search?q={query}&hl=zh-TW&gl=TW&ceid=TW:zh-Hant"
+            
+            res = requests.get(url, timeout=5)
+            # 解析 XML 格式的 RSS
+            root = ET.fromstring(res.text)
+            news_items = root.findall('.//item')
+            
+            if news_items:
+                reply_text = "🔥 【貨櫃船火災 相關新聞】\n\n"
+                # 取最新的前 5 則新聞
+                for i, item in enumerate(news_items[:5], 1):
+                    title = item.find('title').text
+                    link = item.find('link').text
+                    reply_text += f"🔹 {title}\n{link}\n\n"
+            else:
+                reply_text = "目前未搜尋到相關的火災新聞。"
+                
+        except Exception as e:
+            reply_text = f"⚠️ 無法取得新聞資訊: {e}"
+            
+        reply_text += f"(回覆來自：{current_filename})"
+        line_bot_api.reply_message(event.reply_token, TextSendMessage(text=reply_text))
+
+    # 🧭 處理長榮船期表查詢
     elif len(text) == 5 and text[0] == '*':
         targeturl = f"https://ss.shipmentlink.com/tvs2/jsp/TVS2_VesselSchedule.jsp?vslCode={text[1:]}&vslName="
         reply_text = f"{targeturl}\n\n(回覆來自：{current_filename})"
         line_bot_api.reply_message(event.reply_token, TextSendMessage(text=reply_text))
         
-    # 🧭 處理 5 碼，且開頭為 '+' 的查詢 (長榮航次查詢)
+    # 🧭 處理長榮航次查詢
     elif len(text) == 5 and text[0] == '+':
         targeturl = f"https://ss.shipmentlink.com/tvs2/jsp/TVS2_ShowVesselVoyage.jsp?vessel_name=&vessel_code={text[1:]}"
         reply_text = f"{targeturl}\n\n(回覆來自：{current_filename})"
@@ -161,14 +190,13 @@ def callback():
     for event in events:
         if isinstance(event, MessageEvent) and isinstance(event.message, TextMessage):
             handle_message(event)
-            print("✅ 小幫手回覆成功")
+            print("✅ 訊息處理成功")
 
     return 'OK'
 
-# === keepalive 給 uptime robot ping 用 ===
+# === keepalive 給 UptimeRobot ===
 @app.route('/keepalive', methods=['GET'])
 def keep_alive():
-    print("🩵 Keepalive ping received")
     return 'OK'
 
 # === 主程式入口 ===
