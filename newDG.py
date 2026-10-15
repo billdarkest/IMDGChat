@@ -3,7 +3,7 @@ import sys
 import io
 import requests
 import pandas as pd
-from bs4 import BeautifulSoup  # 🆕 爬蟲套件
+from bs4 import BeautifulSoup
 from argparse import ArgumentParser
 from flask import Flask, request, abort
 from linebot import LineBotApi, WebhookParser
@@ -92,26 +92,29 @@ def handle_message(event):
         reply_text += f"\n\n(回覆來自：{current_filename})"
         line_bot_api.reply_message(event.reply_token, TextSendMessage(text=reply_text))
 
-    # 🆕 處理 CINS 最新公告爬蟲 (輸入「CINS最新」觸發)
+    # 🆕 處理 CINS 最新公告爬蟲 (輸入「CINS」觸發)
     elif text.upper() == "CINS":
         try:
-            # 網址更新為最新的 newsy 頁面
             url = "https://www.cinsnet.com/newsy/"
-            # 加上 User-Agent 偽裝成瀏覽器，避免被阻擋
             headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'}
             res = requests.get(url, headers=headers, timeout=5)
             
-            # 解析網頁 HTML
             soup = BeautifulSoup(res.text, 'html.parser')
-            
             news_links = []
-            # 在新聞頁面中，通常標題會包在 a 標籤中
+            
+            # 【關鍵改良：結構過濾法】
+            # 直接把網頁的 頁首(header)、導覽列(nav)、頁尾(footer) 區塊從解析樹中砍掉 (decompose)
+            # 這樣一來，剩下的內容絕對不會有「導覽列按鈕」，不管新聞標題寫什麼都不會被誤殺
+            for element in soup.find_all(['nav', 'header', 'footer']):
+                element.decompose()
+            
+            # 接著在剩下的純淨內容中尋找連結
             for a in soup.find_all('a', href=True):
                 href = a['href']
                 title = a.text.strip()
                 
-                # 過濾掉沒有文字的連結，或是首頁、聯絡我們等無關導覽列
-                if title and len(title) > 10 and "cinsnet.com" in href and "contact" not in href.lower():
+                # 只要有標題，長度合理，且是該網站的連結就收錄
+                if title and len(title) > 10 and "cinsnet.com" in href:
                     if (title, href) not in news_links:
                         news_links.append((title, href))
                 
@@ -127,7 +130,7 @@ def handle_message(event):
                 reply_text = f"前往 CINS 最新動態查看：\n{url}"
                 
         except Exception as e:
-            reply_text = f"⚠️ 無法即時取得 CINS 網站資訊: {e}\n請直接前往: {url}"
+            reply_text = f"⚠️ 無法即時取得資訊: {e}\n請前往: {url}"
             
         reply_text += f"(回覆來自：{current_filename})"
         line_bot_api.reply_message(event.reply_token, TextSendMessage(text=reply_text))
