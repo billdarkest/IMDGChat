@@ -101,7 +101,7 @@ def handle_message(event):
     # 🆕 處理 CINS 最新公告爬蟲
     elif text.upper() == "CINS":
         try:
-            url = "https://www.cinsnet.com/newsy/"
+            url = "https://www.cinsnet.com/news/"
             headers = {'User-Agent': 'Mozilla/5.0'}
             res = requests.get(url, headers=headers, timeout=5)
             soup = BeautifulSoup(res.text, 'html.parser')
