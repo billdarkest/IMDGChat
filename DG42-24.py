@@ -101,12 +101,14 @@ def handle_message(event):
     # 🆕 處理 CINS 最新公告爬蟲
     elif text.upper() == "CINS":
         try:
-            url = "https://www.cinsnet.com/news/"
-            headers = {'User-Agent': 'Mozilla/5.0'}
+            url = "https://www.cinsnet.com/newsy/"
+            headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'}
             res = requests.get(url, headers=headers, timeout=5)
+            
             soup = BeautifulSoup(res.text, 'html.parser')
             news_links = []
             
+            # 移除導覽列與頁尾，避免抓到無關按鈕
             for element in soup.find_all(['nav', 'header', 'footer']):
                 element.decompose()
             
@@ -121,7 +123,7 @@ def handle_message(event):
             
             if news_links:
                 reply_text = "📰 【CINS 最新公告與動態】\n\n"
-                for title, link in news_links:
+                for i, (title, link) in enumerate(news_links, 1):
                     reply_text += f"🔹 {title}\n{link}\n\n"
             else:
                 reply_text = f"前往 CINS 查看：\n{url}"
