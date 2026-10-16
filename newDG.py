@@ -30,8 +30,8 @@ DG_DF = None
 
 def load_csv_to_memory():
     global DG_DF
-    # 這裡設定您剛剛下載的精簡版 CSV 檔名
-    file_path = "IMDG_42_24_Clean.csv"
+    # 對應剛剛修復好的 CSV 檔名
+    file_path = "IMDG_42_24_Fixed.csv"
     
     if not os.path.exists(file_path):
         print(f"❌ 找不到檔案：{file_path}，請確認是否與程式碼放在同一層目錄")
@@ -39,14 +39,13 @@ def load_csv_to_memory():
         
     try:
         print("📥 正在從本機載入 IMDG 42-24 危險品資料...")
-        # 強制將所有欄位讀取為字串，避免格式錯誤
+        # 強制將所有欄位讀取為字串
         df = pd.read_csv(file_path, dtype=str)
-        # 將欄位名稱全部轉為小寫，方便後續比對
         df.columns = [c.strip().lower() for c in df.columns]
         
-        # 確保 un_no 欄位乾淨（移除空白與可能的 .0 小數點）
+        # 終極防呆：確保 un_no 乾淨，並自動在前面補 0 直到滿 4 碼 (例如 4 會自動變成 0004)
         if 'un_no' in df.columns:
-            df['un_no'] = df['un_no'].astype(str).str.replace(".0", "", regex=False).str.strip()
+            df['un_no'] = df['un_no'].astype(str).str.replace(".0", "", regex=False).str.strip().str.zfill(4)
         
         DG_DF = df
         print(f"✅ CSV 載入成功！共 {len(DG_DF)} 筆最新 42-24 資料，準備就緒。")
@@ -59,13 +58,6 @@ load_csv_to_memory()
 # === 處理訊息的自訂函式 ===
 def handle_message(event):
     text = event.message.text.strip()
-
-    # 🔄 隱藏指令：手動重新讀取 CSV (不用重開機)
-    if text.upper() == "!RELOAD":
-        load_csv_to_memory()
-        reply_text = f"✅ 危險品資料庫已重新載入！\n\n(回覆來自：{current_filename})"
-        line_bot_api.reply_message(event.reply_token, TextSendMessage(text=reply_text))
-        return
 
     # 🧩 處理 4 碼 UN 編號查詢 (直接讀取記憶體，速度極快)
     if len(text) == 4 and text.isdigit():
@@ -135,14 +127,12 @@ def handle_message(event):
             soup = BeautifulSoup(res.text, 'html.parser')
             news_links = []
             
-            # 移除導覽列與頁尾，避免抓到無關按鈕
             for element in soup.find_all(['nav', 'header', 'footer']):
                 element.decompose()
             
             for a in soup.find_all('a', href=True):
                 href = a['href']
                 title = a.text.strip()
-                # 篩選看起來像文章標題的連結
                 if title and len(title) > 10 and href.startswith("https://smdg.org/"):
                     if (title, href) not in news_links:
                         news_links.append((title, href))
