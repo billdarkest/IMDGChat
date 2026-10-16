@@ -12,6 +12,7 @@ from linebot.models import MessageEvent, TextMessage, TextSendMessage
 
 # 建立 Flask 網頁伺服器應用程式
 app = Flask(__name__)
+# 會自動抓取你的檔名 (例如：DG42-24.py)
 current_filename = os.path.basename(__file__)
 
 # === LINE 環境變數設定 ===
@@ -30,8 +31,8 @@ DG_DF = None
 
 def load_csv_to_memory():
     global DG_DF
-    # 對應剛剛修復好的 CSV 檔名
-    file_path = "IMDG_42_24_Fixed.csv"
+    # 對應我們剛剛產生的最終版 CSV
+    file_path = "IMDG_42_24_Final.csv"
     
     if not os.path.exists(file_path):
         print(f"❌ 找不到檔案：{file_path}，請確認是否與程式碼放在同一層目錄")
@@ -43,7 +44,7 @@ def load_csv_to_memory():
         df = pd.read_csv(file_path, dtype=str)
         df.columns = [c.strip().lower() for c in df.columns]
         
-        # 終極防呆：確保 un_no 乾淨，並自動在前面補 0 直到滿 4 碼 (例如 4 會自動變成 0004)
+        # 終極防呆：確保 un_no 乾淨，並自動在前面補 0 直到滿 4 碼
         if 'un_no' in df.columns:
             df['un_no'] = df['un_no'].astype(str).str.replace(".0", "", regex=False).str.strip().str.zfill(4)
         
@@ -59,30 +60,41 @@ load_csv_to_memory()
 def handle_message(event):
     text = event.message.text.strip()
 
-    # 🧩 處理 4 碼 UN 編號查詢 (直接讀取記憶體，速度極快)
+    # 🧩 處理 4 碼 UN 編號查詢 (支援同 UN 多筆資料顯示)
     if len(text) == 4 and text.isdigit():
         if DG_DF is not None and 'un_no' in DG_DF.columns:
             match_row = DG_DF[DG_DF['un_no'] == text]
             if not match_row.empty:
-                row = match_row.iloc[0]
-                psn = str(row.get('proper_shipping_name', '')).strip()
-                cls = str(row.get('class_or_division', '')).strip()
-                ems = str(row.get('ems', '')).strip()
-                stow = str(row.get('stowage_and_segregation', '')).strip()
+                reply_text = f"📦 查詢 UN 編號：{text}\n"
+                reply_text += f"🔎 共找到 {len(match_row)} 筆不同規範：\n"
+                reply_text += "=" * 20 + "\n"
 
-                reply_text = (
-                    f"📦 UN編號：{text}\n"
-                    f"📄 品名：{psn}\n"
-                    f"⚠️ 類別：{cls}\n"
-                    f"🚢 EMS：{ems}\n"
-                    f"📋 儲存與隔離：\n{stow}"
-                )
+                # 迴圈把所有符合的資料印出來
+                for index, row in match_row.iterrows():
+                    psn = str(row.get('proper_shipping_name', '')).strip()
+                    cls = str(row.get('class_or_division', '')).strip()
+                    
+                    # 處理包裝等級 (PG)
+                    pg = str(row.get('packing_group', '')).strip()
+                    if pg.lower() == 'nan' or not pg:
+                        pg = "無"
+                        
+                    ems = str(row.get('ems', '')).strip()
+                    stow = str(row.get('stowage_and_segregation', '')).strip()
+
+                    reply_text += (
+                        f"📄 品名：{psn}\n"
+                        f"📦 級別(PG)：{pg} | ⚠️ 類別：{cls}\n"
+                        f"🚢 EMS：{ems}\n"
+                        f"📋 隔離：{stow}\n"
+                        f"-" * 20 + "\n"
+                    )
             else:
                 reply_text = f"❓ 查無此 UN 編號：{text}"
         else:
             reply_text = "⚠️ 危險品資料尚未準備好，請確認 CSV 檔案是否正確放置。"
 
-        reply_text += f"\n\n(回覆來自：{current_filename})"
+        reply_text += f"(回覆來自：{current_filename})"
         line_bot_api.reply_message(event.reply_token, TextSendMessage(text=reply_text))
 
     # 🆕 處理 CINS 最新公告爬蟲
