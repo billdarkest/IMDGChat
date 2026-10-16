@@ -60,14 +60,14 @@ load_csv_to_memory()
 def handle_message(event):
     text = event.message.text.strip()
 
-    # 🧩 處理 4 碼 UN 編號查詢 (支援同 UN 多筆資料顯示)
+# 🧩 處理 4 碼 UN 編號查詢 (支援同 UN 多筆資料顯示)
     if len(text) == 4 and text.isdigit():
         if DG_DF is not None and 'un_no' in DG_DF.columns:
             match_row = DG_DF[DG_DF['un_no'] == text]
             if not match_row.empty:
                 reply_text = f"📦 查詢 UN 編號：{text}\n"
                 reply_text += f"🔎 共找到 {len(match_row)} 筆不同規範：\n"
-                reply_text += "=" * 20 + "\n"
+                reply_text += "====================\n"
 
                 # 迴圈把所有符合的資料印出來
                 for index, row in match_row.iterrows():
@@ -82,12 +82,13 @@ def handle_message(event):
                     ems = str(row.get('ems', '')).strip()
                     stow = str(row.get('stowage_and_segregation', '')).strip()
 
+                    # 這裡修復了！不會再把整段文字乘 20 倍了！
                     reply_text += (
                         f"📄 品名：{psn}\n"
                         f"📦 級別(PG)：{pg} | ⚠️ 類別：{cls}\n"
                         f"🚢 EMS：{ems}\n"
                         f"📋 隔離：{stow}\n"
-                        f"-" * 20 + "\n"
+                        "--------------------\n"
                     )
             else:
                 reply_text = f"❓ 查無此 UN 編號：{text}"
