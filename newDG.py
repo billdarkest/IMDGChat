@@ -1,12 +1,10 @@
 import os
 import sys
-import io
 import requests
 import urllib.parse
 import xml.etree.ElementTree as ET
 import pandas as pd
 from bs4 import BeautifulSoup
-from argparse import ArgumentParser
 from flask import Flask, request, abort
 from linebot import LineBotApi, WebhookParser
 from linebot.exceptions import InvalidSignatureError
@@ -14,52 +12,44 @@ from linebot.models import MessageEvent, TextMessage, TextSendMessage
 
 # 建立 Flask 網頁伺服器應用程式
 app = Flask(__name__)
-
-# 自動取得目前執行的 Python 檔案名稱 (例如：newDG.py)
 current_filename = os.path.basename(__file__)
 
 # === LINE 環境變數設定 ===
 channel_secret = os.getenv('LINE_CHANNEL_SECRET', None)
 channel_access_token = os.getenv('LINE_CHANNEL_ACCESS_TOKEN', None)
 
-if channel_secret is None:
-    print('❌ 未設定 LINE_CHANNEL_SECRET')
-    sys.exit(1)
-if channel_access_token is None:
-    print('❌ 未設定 LINE_CHANNEL_ACCESS_TOKEN')
+if channel_secret is None or channel_access_token is None:
+    print('❌ 未設定 LINE_CHANNEL_SECRET 或 LINE_CHANNEL_ACCESS_TOKEN')
     sys.exit(1)
 
 line_bot_api = LineBotApi(channel_access_token)
 parser = WebhookParser(channel_secret)
 
-# === CSV 全域快取 (啟動時只讀取一次) ===
-CSV_URL = os.getenv("CSV_URL", None)
+# === CSV 全域快取 (讀取本機檔案) ===
 DG_DF = None
-UN_COL = None
 
 def load_csv_to_memory():
-    global DG_DF, UN_COL
-    if CSV_URL is None:
-        print("❌ 未設定 CSV_URL，請在 Render Environment 新增")
+    global DG_DF
+    # 這裡設定您剛剛下載的精簡版 CSV 檔名
+    file_path = "IMDG_42_24_Clean.csv"
+    
+    if not os.path.exists(file_path):
+        print(f"❌ 找不到檔案：{file_path}，請確認是否與程式碼放在同一層目錄")
         return
         
     try:
-        print("📥 正在從 Google 試算表載入危險品資料...")
-        response = requests.get(CSV_URL)
-        response.encoding = 'utf-8'
-        df = pd.read_csv(io.StringIO(response.text), sep=',', quotechar='"', engine='python', skip_blank_lines=True)
+        print("📥 正在從本機載入 IMDG 42-24 危險品資料...")
+        # 強制將所有欄位讀取為字串，避免格式錯誤
+        df = pd.read_csv(file_path, dtype=str)
+        # 將欄位名稱全部轉為小寫，方便後續比對
         df.columns = [c.strip().lower() for c in df.columns]
-
+        
+        # 確保 un_no 欄位乾淨（移除空白與可能的 .0 小數點）
         if 'un_no' in df.columns:
-            UN_COL = 'un_no'
-        elif 'num' in df.columns:
-            UN_COL = 'num'
-        else:
-            raise KeyError("未找到 'un_no' 或 'num' 欄位")
-
-        df[UN_COL] = df[UN_COL].astype(str).str.replace("num", "", case=False).str.strip()
+            df['un_no'] = df['un_no'].astype(str).str.replace(".0", "", regex=False).str.strip()
+        
         DG_DF = df
-        print(f"✅ CSV 載入成功！共 {len(DG_DF)} 筆資料，之後查詢將瞬間回覆。")
+        print(f"✅ CSV 載入成功！共 {len(DG_DF)} 筆最新 42-24 資料，準備就緒。")
     except Exception as e:
         print(f"⚠️ CSV 載入失敗: {e}")
 
@@ -70,33 +60,35 @@ load_csv_to_memory()
 def handle_message(event):
     text = event.message.text.strip()
 
-    # 🔄 隱藏指令：手動更新 CSV (不用重開機)
+    # 🔄 隱藏指令：手動重新讀取 CSV (不用重開機)
     if text.upper() == "!RELOAD":
         load_csv_to_memory()
-        reply_text = f"✅ 危險品資料庫已重新下載並更新至記憶體！\n\n(回覆來自：{current_filename})"
+        reply_text = f"✅ 危險品資料庫已重新載入！\n\n(回覆來自：{current_filename})"
         line_bot_api.reply_message(event.reply_token, TextSendMessage(text=reply_text))
         return
 
     # 🧩 處理 4 碼 UN 編號查詢 (直接讀取記憶體，速度極快)
     if len(text) == 4 and text.isdigit():
-        if DG_DF is not None and UN_COL is not None:
-            match_row = DG_DF[DG_DF[UN_COL] == text]
+        if DG_DF is not None and 'un_no' in DG_DF.columns:
+            match_row = DG_DF[DG_DF['un_no'] == text]
             if not match_row.empty:
                 row = match_row.iloc[0]
-                psn = str(row.get('proper_shipping_name', '')).replace("PSN", "").strip()
-                ems = str(row.get('ems', '')).replace("EN!", "").replace("!BB", "").strip()
-                stow = str(row.get('stowage_and_segregation', '')).replace("AAA", "").strip()
+                psn = str(row.get('proper_shipping_name', '')).strip()
+                cls = str(row.get('class_or_division', '')).strip()
+                ems = str(row.get('ems', '')).strip()
+                stow = str(row.get('stowage_and_segregation', '')).strip()
 
                 reply_text = (
                     f"📦 UN編號：{text}\n"
                     f"📄 品名：{psn}\n"
+                    f"⚠️ 類別：{cls}\n"
                     f"🚢 EMS：{ems}\n"
-                    f"📋 儲存與隔離：{stow}"
+                    f"📋 儲存與隔離：\n{stow}"
                 )
             else:
                 reply_text = f"❓ 查無此 UN 編號：{text}"
         else:
-            reply_text = "⚠️ 危險品資料尚未準備好，請稍後再試。"
+            reply_text = "⚠️ 危險品資料尚未準備好，請確認 CSV 檔案是否正確放置。"
 
         reply_text += f"\n\n(回覆來自：{current_filename})"
         line_bot_api.reply_message(event.reply_token, TextSendMessage(text=reply_text))
@@ -105,13 +97,11 @@ def handle_message(event):
     elif text.upper() == "CINS":
         try:
             url = "https://www.cinsnet.com/newsy/"
-            headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'}
+            headers = {'User-Agent': 'Mozilla/5.0'}
             res = requests.get(url, headers=headers, timeout=5)
-            
             soup = BeautifulSoup(res.text, 'html.parser')
             news_links = []
             
-            # 移除導覽列與頁尾，避免抓到無關按鈕
             for element in soup.find_all(['nav', 'header', 'footer']):
                 element.decompose()
             
@@ -126,7 +116,7 @@ def handle_message(event):
             
             if news_links:
                 reply_text = "📰 【CINS 最新公告與動態】\n\n"
-                for i, (title, link) in enumerate(news_links, 1):
+                for title, link in news_links:
                     reply_text += f"🔹 {title}\n{link}\n\n"
             else:
                 reply_text = f"前往 CINS 查看：\n{url}"
@@ -136,28 +126,58 @@ def handle_message(event):
         reply_text += f"(回覆來自：{current_filename})"
         line_bot_api.reply_message(event.reply_token, TextSendMessage(text=reply_text))
 
+    # 🆕 處理 SMDG 最新動態爬蟲
+    elif text.upper() == "SMDG":
+        try:
+            url = "https://smdg.org/"
+            headers = {'User-Agent': 'Mozilla/5.0'}
+            res = requests.get(url, headers=headers, timeout=5)
+            soup = BeautifulSoup(res.text, 'html.parser')
+            news_links = []
+            
+            # 移除導覽列與頁尾，避免抓到無關按鈕
+            for element in soup.find_all(['nav', 'header', 'footer']):
+                element.decompose()
+            
+            for a in soup.find_all('a', href=True):
+                href = a['href']
+                title = a.text.strip()
+                # 篩選看起來像文章標題的連結
+                if title and len(title) > 10 and href.startswith("https://smdg.org/"):
+                    if (title, href) not in news_links:
+                        news_links.append((title, href))
+                if len(news_links) >= 5:
+                    break
+            
+            if news_links:
+                reply_text = "⚓ 【SMDG 最新動態】\n\n"
+                for title, link in news_links:
+                    reply_text += f"🔹 {title}\n{link}\n\n"
+            else:
+                reply_text = f"前往 SMDG 查看：\n{url}"
+        except Exception as e:
+            reply_text = f"⚠️ 無法取得資訊: {e}\n請前往: {url}"
+            
+        reply_text += f"(回覆來自：{current_filename})"
+        line_bot_api.reply_message(event.reply_token, TextSendMessage(text=reply_text))
+
     # 🔥 處理火災新聞搜尋
     elif text == "火災":
         try:
-            # 透過 Google News RSS 搜尋中英文的貨櫃船火災新聞
             query = urllib.parse.quote("貨櫃船 火災 OR container ship fire")
             url = f"https://news.google.com/rss/search?q={query}&hl=zh-TW&gl=TW&ceid=TW:zh-Hant"
-            
             res = requests.get(url, timeout=5)
-            # 解析 XML 格式的 RSS
             root = ET.fromstring(res.text)
             news_items = root.findall('.//item')
             
             if news_items:
                 reply_text = "🔥 【貨櫃船火災 相關新聞】\n\n"
-                # 取最新的前 5 則新聞
-                for i, item in enumerate(news_items[:5], 1):
+                for item in news_items[:5]:
                     title = item.find('title').text
                     link = item.find('link').text
                     reply_text += f"🔹 {title}\n{link}\n\n"
             else:
                 reply_text = "目前未搜尋到相關的火災新聞。"
-                
         except Exception as e:
             reply_text = f"⚠️ 無法取得新聞資訊: {e}"
             
@@ -190,7 +210,6 @@ def callback():
     for event in events:
         if isinstance(event, MessageEvent) and isinstance(event.message, TextMessage):
             handle_message(event)
-            print("✅ 訊息處理成功")
 
     return 'OK'
 
